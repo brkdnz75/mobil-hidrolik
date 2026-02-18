@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { saveProductAction, deleteProductAction } from '@/app/actions/admin';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,37 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/lib/utils';
 
-export default async function AdminProductsPage({ searchParams }: { searchParams: Promise<{ edit?: string }> }) {
+type SearchParams = {
+  edit?: string;
+  q?: string;
+  categoryId?: string;
+};
+
+export default async function AdminProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
+  const query = (params.q || '').trim();
+  const categoryId = (params.categoryId || '').trim();
+
   const [products, categories] = await Promise.all([
-    prisma.product.findMany({ include: { category: true }, orderBy: { updatedAt: 'desc' } }),
+    prisma.product.findMany({
+      include: { category: true },
+      where: {
+        ...(categoryId ? { categoryId } : {}),
+        ...(query
+          ? {
+              OR: [
+                { name: { contains: query, mode: 'insensitive' } },
+                { slug: { contains: query, mode: 'insensitive' } },
+                { shortDesc: { contains: query, mode: 'insensitive' } }
+              ]
+            }
+          : {})
+      },
+      orderBy: { updatedAt: 'desc' }
+    }),
     prisma.category.findMany({ orderBy: { order: 'asc' } })
   ]);
 
@@ -21,7 +47,10 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold">Ürün Yönetimi</h1>
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Ürün Yönetimi</h1>
+        <p className="text-sm text-muted-foreground">Ürün ekleyin, teknik değerleri güncelleyin ve katalog akışını yönetin.</p>
+      </div>
 
       <Card>
         <CardHeader>
@@ -32,16 +61,16 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
             <input type="hidden" name="id" defaultValue={editing?.id} />
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label>Ürün Adı</Label>
-                <Input name="name" defaultValue={editing?.name} required />
+                <Label htmlFor="name">Ürün Adı</Label>
+                <Input id="name" name="name" defaultValue={editing?.name} required />
               </div>
               <div>
-                <Label>Slug</Label>
-                <Input name="slug" defaultValue={editing?.slug} required />
+                <Label htmlFor="slug">Slug</Label>
+                <Input id="slug" name="slug" defaultValue={editing?.slug} required />
               </div>
               <div>
-                <Label>Kategori</Label>
-                <Select name="categoryId" defaultValue={editing?.categoryId} required>
+                <Label htmlFor="categoryId">Kategori</Label>
+                <Select id="categoryId" name="categoryId" defaultValue={editing?.categoryId} required>
                   <option value="">Seçiniz</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -51,51 +80,59 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                 </Select>
               </div>
               <div>
-                <Label>ISO VG</Label>
-                <Input name="isoVg" defaultValue={editing?.isoVg} required />
+                <Label htmlFor="isoVg">ISO VG</Label>
+                <Input id="isoVg" name="isoVg" defaultValue={editing?.isoVg} required />
               </div>
               <div>
-                <Label>Viskozite İndeksi</Label>
-                <Input name="viscosityIndex" defaultValue={editing?.viscosityIndex || ''} type="number" step="0.1" />
+                <Label htmlFor="viscosityIndex">Viskozite İndeksi</Label>
+                <Input id="viscosityIndex" name="viscosityIndex" defaultValue={editing?.viscosityIndex || ''} type="number" step="0.1" />
               </div>
               <div>
-                <Label>Yoğunluk</Label>
-                <Input name="density" defaultValue={editing?.density || ''} type="number" step="0.001" />
+                <Label htmlFor="density">Yoğunluk</Label>
+                <Input id="density" name="density" defaultValue={editing?.density || ''} type="number" step="0.001" />
+              </div>
+              <div>
+                <Label htmlFor="pourPoint">Akma Noktası (°C)</Label>
+                <Input id="pourPoint" name="pourPoint" defaultValue={editing?.pourPoint || ''} type="number" step="0.1" />
+              </div>
+              <div>
+                <Label htmlFor="flashPoint">Parlama Noktası (°C)</Label>
+                <Input id="flashPoint" name="flashPoint" defaultValue={editing?.flashPoint || ''} type="number" step="0.1" />
               </div>
             </div>
 
             <div>
-              <Label>Kısa Açıklama</Label>
-              <Input name="shortDesc" defaultValue={editing?.shortDesc} required />
+              <Label htmlFor="shortDesc">Kısa Açıklama</Label>
+              <Input id="shortDesc" name="shortDesc" defaultValue={editing?.shortDesc} required />
             </div>
             <div>
-              <Label>Uzun Açıklama</Label>
-              <Textarea name="longDesc" defaultValue={editing?.longDesc} required />
+              <Label htmlFor="longDesc">Uzun Açıklama</Label>
+              <Textarea id="longDesc" name="longDesc" defaultValue={editing?.longDesc} rows={5} required />
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div>
-                <Label>Paketler (virgül)</Label>
-                <Input name="packagingText" defaultValue={((editing?.packaging as string[]) || []).join(', ')} required />
+                <Label htmlFor="packagingText">Paketler (virgül)</Label>
+                <Input id="packagingText" name="packagingText" defaultValue={((editing?.packaging as string[]) || []).join(', ')} required />
               </div>
               <div>
-                <Label>Öne Çıkanlar (virgül)</Label>
-                <Input name="highlightsText" defaultValue={((editing?.highlights as string[]) || []).join(', ')} required />
+                <Label htmlFor="highlightsText">Öne Çıkanlar (virgül)</Label>
+                <Input id="highlightsText" name="highlightsText" defaultValue={((editing?.highlights as string[]) || []).join(', ')} required />
               </div>
               <div>
-                <Label>Görsel URLleri (virgül)</Label>
-                <Input name="imagesText" defaultValue={((editing?.images as string[]) || []).join(', ')} required />
+                <Label htmlFor="imagesText">Görsel URL listesi (virgül)</Label>
+                <Input id="imagesText" name="imagesText" defaultValue={((editing?.images as string[]) || []).join(', ')} required />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <Label>TDS URL</Label>
-                <Input name="tdsUrl" defaultValue={docs.tdsUrl || ''} />
+                <Label htmlFor="tdsUrl">TDS URL</Label>
+                <Input id="tdsUrl" name="tdsUrl" defaultValue={docs.tdsUrl || ''} />
               </div>
               <div>
-                <Label>MSDS URL</Label>
-                <Input name="msdsUrl" defaultValue={docs.msdsUrl || ''} />
+                <Label htmlFor="msdsUrl">MSDS URL</Label>
+                <Input id="msdsUrl" name="msdsUrl" defaultValue={docs.msdsUrl || ''} />
               </div>
             </div>
 
@@ -119,44 +156,70 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
 
       <Card>
         <CardHeader>
-          <CardTitle>Ürünler</CardTitle>
+          <CardTitle>Ürün Listesi</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ürün</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>ISO VG</TableHead>
-                <TableHead>İşlem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell>{product.category.name}</TableCell>
-                  <TableCell>{product.isoVg}</TableCell>
-                  <TableCell className="flex gap-2">
-                    <Link href={`/admin/urunler?edit=${product.id}`}>
-                      <Button size="sm" variant="outline">
-                        Düzenle
-                      </Button>
-                    </Link>
-                    <form action={deleteProductAction}>
-                      <input type="hidden" name="id" value={product.id} />
-                      <Button size="sm" type="submit" variant="secondary">
-                        Sil
-                      </Button>
-                    </form>
-                  </TableCell>
-                </TableRow>
+        <CardContent className="space-y-4">
+          <form className="grid gap-3 md:grid-cols-[1fr_240px_auto]" method="get">
+            <Input name="q" defaultValue={query} placeholder="Ürün, slug veya kısa açıklama ara" />
+            <Select name="categoryId" defaultValue={categoryId}>
+              <option value="">Tüm kategoriler</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
               ))}
-            </TableBody>
-          </Table>
+            </Select>
+            <Button type="submit">Filtrele</Button>
+          </form>
+
+          {products.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ürün</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>ISO VG</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Güncelleme</TableHead>
+                  <TableHead>İşlem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <p className="font-medium">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">/{product.slug}</p>
+                    </TableCell>
+                    <TableCell>{product.category.name}</TableCell>
+                    <TableCell>{product.isoVg}</TableCell>
+                    <TableCell>{product.isFeatured ? <Badge variant="accent">Öne Çıkan</Badge> : <Badge variant="secondary">Standart</Badge>}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDate(product.updatedAt)}</TableCell>
+                    <TableCell className="flex gap-2">
+                      <Link href={`/admin/urunler?edit=${product.id}`}>
+                        <Button size="sm" variant="outline">
+                          Düzenle
+                        </Button>
+                      </Link>
+                      <form action={deleteProductAction}>
+                        <input type="hidden" name="id" value={product.id} />
+                        <Button size="sm" type="submit" variant="secondary">
+                          Sil
+                        </Button>
+                      </form>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="rounded-xl border border-dashed p-8 text-center">
+              <p className="text-base font-medium">Filtreye uygun ürün bulunamadı.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Arama kriterlerini değiştirip tekrar deneyin.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
-

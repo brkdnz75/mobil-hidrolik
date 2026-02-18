@@ -10,12 +10,13 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
 
     if (!checkRateLimit(ip)) {
-      return NextResponse.json({ message: 'Cok fazla istek.' }, { status: 429 });
+      return NextResponse.json({ message: 'Çok fazla istek. Lütfen kısa süre sonra tekrar deneyin.' }, { status: 429 });
     }
 
     const parsed = inquirySchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ message: 'Gecersiz form verisi.' }, { status: 400 });
+      const firstIssue = parsed.error.issues[0]?.message ?? 'Geçersiz form verisi.';
+      return NextResponse.json({ message: firstIssue }, { status: 400 });
     }
 
     if (parsed.data.website) {
@@ -49,6 +50,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ message: 'Sunucu hatasi' }, { status: 500 });
+    return NextResponse.json({ message: 'Sunucu hatası oluştu.' }, { status: 500 });
   }
 }

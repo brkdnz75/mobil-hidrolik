@@ -39,6 +39,10 @@ export async function deleteCategoryAction(formData: FormData) {
   await requireAdmin();
   const id = formData.get('id')?.toString();
   if (!id) return;
+  const hasProducts = await prisma.product.count({ where: { categoryId: id } });
+  if (hasProducts > 0) {
+    throw new Error('Bu kategoriye bağlı ürünler olduğu için silinemez.');
+  }
   await prisma.category.delete({ where: { id } });
   revalidatePath('/admin/kategoriler');
 }
@@ -103,7 +107,7 @@ export async function updateInquiryStatusAction(formData: FormData) {
   const id = formData.get('id')?.toString();
   const status = formData.get('status')?.toString() as 'NEW' | 'READ' | 'ARCHIVED';
 
-  if (!id || !status) return;
+  if (!id || !status || !['NEW', 'READ', 'ARCHIVED'].includes(status)) return;
 
   await prisma.inquiry.update({
     where: { id },
