@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum InquiryStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  name           String
+  slug           String    @unique
+  categoryId     String
+  shortDesc      String
+  longDesc       String
+  isoVg          String
+  viscosityIndex Float?
+  pourPoint      Float?
+  flashPoint     Float?
+  density        Float?
+  packaging      Json
+  highlights     Json
+  images         Json
+  documents      Json
+  isFeatured     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  inquiries      Inquiry[]
+}
+
+model Inquiry {
+  id        String        @id @default(cuid())
+  name      String
+  company   String?
+  phone     String?
+  email     String
+  subject   String
+  message   String
+  productId String?
+  status    InquiryStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  product   Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
+
+model ContentPage {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  content     String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
