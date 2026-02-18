@@ -49,7 +49,7 @@ export function InquiryForm({ products, presetProductId }: { products?: Option[]
       body: JSON.stringify(values)
     });
 
-    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    const payload = (await response.json().catch(() => ({}))) as { message?: string; warning?: string };
 
     if (!response.ok) {
       const message = payload.message || 'Talep gönderilemedi. Lütfen tekrar deneyin.';
@@ -58,7 +58,11 @@ export function InquiryForm({ products, presetProductId }: { products?: Option[]
       return;
     }
 
-    toast.show('Talebiniz alındı. En kısa sürede dönüş yapacağız.');
+    if (payload.warning) {
+      toast.show(payload.warning, 'error');
+    } else {
+      toast.show('Talebiniz alındı. En kısa sürede dönüş yapacağız.');
+    }
     form.reset({
       name: '',
       company: '',

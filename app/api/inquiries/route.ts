@@ -38,17 +38,24 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    await sendInquiryEmail({
-      name: inquiry.name,
-      email: inquiry.email,
-      phone: inquiry.phone || undefined,
-      company: inquiry.company || undefined,
-      subject: inquiry.subject,
-      message: inquiry.message,
-      productName: inquiry.product?.name
-    });
-
-    return NextResponse.json({ ok: true });
+    try {
+      await sendInquiryEmail({
+        name: inquiry.name,
+        email: inquiry.email,
+        phone: inquiry.phone || undefined,
+        company: inquiry.company || undefined,
+        subject: inquiry.subject,
+        message: inquiry.message,
+        productName: inquiry.product?.name
+      });
+      return NextResponse.json({ ok: true });
+    } catch (mailError) {
+      console.error('Inquiry mail failed:', mailError);
+      return NextResponse.json({
+        ok: true,
+        warning: 'Talep kaydedildi ancak e-posta gönderimi başarısız oldu.'
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Sunucu hatası oluştu.';
     return NextResponse.json({ message }, { status: 500 });
