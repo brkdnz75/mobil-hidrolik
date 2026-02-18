@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: firstIssue }, { status: 400 });
     }
 
-    if (parsed.data.website) {
-      return NextResponse.json({ ok: true }, { status: 200 });
+    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+      return NextResponse.json({ message: 'Spam kontrolüne takıldı.' }, { status: 400 });
     }
 
     const inquiry = await prisma.inquiry.create({
@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ message: 'Sunucu hatası oluştu.' }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Sunucu hatası oluştu.';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
